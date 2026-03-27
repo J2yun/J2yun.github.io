@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>한국어 Magic 8-Ball</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:        #100d18;
+      --bg2:       #1d1830;
+      --gold:      #c9a84c;
+      --gold-dim:  #7a6130;
+      --gold-glow: rgba(201,168,76,0.15);
+      --cream:     #f0e8d8;
+      --cream-dim: #9a8f7a;
+      --ball-hi:   #3a3a3a;
+      --inner-from:#2e2060;
+      --inner-to:  #0d0920;
+      --ring:      rgba(201,168,76,0.35);
+    }
+
+    body.modern {
+      --bg:        #080c14;
+      --bg2:       #0f1826;
+      --gold:      #7eb8f7;
+      --gold-dim:  #5a8fc0;
+      --gold-glow: rgba(126,184,247,0.12);
+      --cream:     #d0e8ff;
+      --cream-dim: #5a7898;
+      --ball-hi:   #1a2a3a;
+      --inner-from:#1a3868;
+      --inner-to:  #050d1e;
+      --ring:      rgba(126,184,247,0.35);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at 50% 55%, var(--bg2) 0%, var(--bg) 65%);
+      font-family: 'Noto Sans KR', sans-serif;
+      transition: background 0.5s, color 0.5s;
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Grain overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      opacity: 0.03;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Star field */
+    .bg-stars {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Central glow */
+    .bg-glow {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 700px;
+      height: 700px;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--gold-glow) 0%, transparent 65%);
+      pointer-events: none;
+      z-index: 0;
+      transition: background 0.5s;
+    }
+
+    /* All content above backgrounds */
+    .content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Theme toggle */
+    .theme-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--cream-dim);
+      z-index: 100;
+      transition: color 0.5s;
+    }
+
+    .toggle-label {
+      font-family: 'Nanum Myeongjo', serif;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 26px;
+    }
+
+    .switch input { opacity: 0; width: 0; height: 0; }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: #2a2240;
+      border-radius: 34px;
+      border: 1px solid var(--gold-dim);
+      transition: 0.3s;
+    }
+
+    .slider::before {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: 3px;
+      bottom: 3px;
+      background: var(--gold-dim);
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+
+    input:checked + .slider { background: #162040; }
+    input:checked + .slider::before {
+      transform: translateX(22px);
+      background: var(--gold);
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    h1 {
+      font-family: 'Nanum Myeongjo', serif;
+      font-size: 2.4rem;
+      font-weight: 800;
+      color: var(--gold);
+      letter-spacing: 3px;
+      transition: color 0.5s;
+      text-shadow: 0 0 40px var(--gold-glow), 0 2px 8px rgba(0,0,0,0.6);
+    }
+
+    .title-divider {
+      width: 64px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+      margin: 14px auto 16px;
+      transition: background 0.5s;
+    }
+
+    .guide-text {
+      font-family: 'Nanum Myeongjo', serif;
+      font-style: italic;
+      color: var(--cream-dim);
+      font-size: 14px;
+      max-width: 340px;
+      line-height: 1.7;
+      text-align: center;
+      transition: color 0.5s;
+    }
+
+    /* Ball */
+    .ball-container {
+      position: relative;
+      width: 270px;
+      height: 270px;
+      cursor: pointer;
+      user-select: none;
+      animation: float 4s ease-in-out infinite;
+      transition: filter 0.3s;
+    }
+
+    .ball-container:hover {
+      filter: drop-shadow(0 0 18px var(--gold-glow));
+    }
+
+    .ball-container.shaking {
+      animation: shake 0.65s ease;
+    }
+
+    .ball {
+      width: 270px;
+      height: 270px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 32% 30%, var(--ball-hi) 0%, #181818 35%, #050305 100%);
+      box-shadow:
+        0 12px 48px rgba(0,0,0,0.7),
+        0 0 0 1px rgba(255,255,255,0.04),
+        inset -10px -10px 24px rgba(0,0,0,0.7),
+        inset 5px 5px 16px rgba(255,255,255,0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      transition: box-shadow 0.3s, background 0.5s;
+    }
+
+    .ball-container:not(.shaking):hover .ball {
+      transform: scale(1.03);
+      transition: transform 0.25s ease, box-shadow 0.3s;
+    }
+
+    /* Highlight */
+    .ball::after {
+      content: '';
+      position: absolute;
+      top: 15%;
+      left: 20%;
+      width: 32%;
+      height: 20%;
+      background: radial-gradient(ellipse, rgba(255,255,255,0.14) 0%, transparent 75%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    /* Inner circle */
+    .inner-circle {
+      width: 136px;
+      height: 136px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 38% 36%, var(--inner-from), var(--inner-to));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow:
+        inset 0 2px 10px rgba(0,0,0,0.5),
+        0 0 0 2px var(--ring),
+        0 0 16px rgba(0,0,0,0.4);
+      transition: background 0.5s, box-shadow 0.5s;
+    }
+
+    .inner-circle.pulse {
+      animation: glowPulse 0.5s ease;
+    }
+
+    /* Eight */
+    .eight {
+      color: rgba(255,255,255,0.9);
+      font-size: 68px;
+      font-weight: 900;
+      line-height: 1;
+      font-family: 'Nanum Myeongjo', serif;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+    }
+
+    /* Answer text */
+    .answer-text {
+      color: rgba(255,255,255,0.92);
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      padding: 0 14px;
+      line-height: 1.65;
+      opacity: 0;
+      display: none;
+      text-shadow: 0 1px 6px rgba(0,0,0,0.6);
+      transition: color 0.5s;
+    }
+
+    body.modern .answer-text {
+      color: #c8e0ff;
+    }
+
+    .answer-text.visible {
+      display: block;
+      animation: fadeIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    /* Hint */
+    .hint {
+      margin-top: 28px;
+      font-size: 12px;
+      color: var(--gold-dim);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      font-family: 'Nanum Myeongjo', serif;
+      transition: color 0.5s;
+      opacity: 0.8;
+    }
+
+    /* Keyframes */
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50%       { transform: translateY(-9px); }
+    }
+
+    @keyframes shake {
+      0%   { transform: translate(0, 0) rotate(0deg); }
+      8%   { transform: translate(-7px, -5px) rotate(-4deg); }
+      18%  { transform: translate(7px, 5px) rotate(4deg); }
+      28%  { transform: translate(-7px, 5px) rotate(-3deg); }
+      38%  { transform: translate(7px, -5px) rotate(3deg); }
+      48%  { transform: translate(-5px, -7px) rotate(-4deg); }
+      58%  { transform: translate(5px, 7px) rotate(4deg); }
+      68%  { transform: translate(-5px, 5px) rotate(-2deg); }
+      78%  { transform: translate(5px, -5px) rotate(2deg); }
+      90%  { transform: translate(-2px, 2px) rotate(-1deg); }
+      100% { transform: translate(0, 0) rotate(0deg); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.82); filter: blur(3px); }
+      to   { opacity: 1; transform: scale(1);    filter: blur(0); }
+    }
+
+    @keyframes glowPulse {
+      0%   { box-shadow: inset 0 2px 10px rgba(0,0,0,0.5), 0 0 0 2px var(--ring), 0 0 16px rgba(0,0,0,0.4); }
+      40%  { box-shadow: inset 0 2px 10px rgba(0,0,0,0.5), 0 0 0 4px var(--ring), 0 0 40px var(--gold-glow); }
+      100% { box-shadow: inset 0 2px 10px rgba(0,0,0,0.5), 0 0 0 2px var(--ring), 0 0 16px rgba(0,0,0,0.4); }
+    }
+
+    /* Star dot */
+    .star {
+      position: absolute;
+      border-radius: 50%;
+      background: white;
+      animation: twinkle var(--dur, 3s) ease-in-out infinite;
+      animation-delay: var(--delay, 0s);
+    }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: var(--min-op, 0.2); }
+      50%       { opacity: var(--max-op, 0.8); }
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      h1 { font-size: 1.8rem; }
+      .ball-container, .ball { width: 220px; height: 220px; }
+      .inner-circle { width: 110px; height: 110px; }
+      .eight { font-size: 54px; }
+      .answer-text { font-size: 10px; padding: 0 10px; }
+      header { margin-bottom: 28px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-stars" id="bgStars"></div>
+  <div class="bg-glow"></div>
+
+  <!-- 테마 토글 -->
+  <div class="theme-toggle">
+    <span class="toggle-label">클래식</span>
+    <label class="switch">
+      <input type="checkbox" id="themeToggle">
+      <span class="slider"></span>
+    </label>
+    <span class="toggle-label">모던</span>
+  </div>
+
+  <div class="content">
+    <header>
+      <h1>Magic 8-Ball ✦</h1>
+      <div class="title-divider"></div>
+      <p class="guide-text">매직 볼에게 무엇이든 물어보세요<br>사랑, 직업, 전공 등 모든 것에 답변해드려요.</p>
+    </header>
+
+    <!-- 8볼 -->
+    <div class="ball-container" id="ballContainer" title="공을 클릭하세요">
+      <div class="ball">
+        <div class="inner-circle" id="innerCircle">
+          <span class="eight" id="eight">8</span>
+          <span class="answer-text" id="answerText"></span>
+        </div>
+      </div>
+    </div>
+
+    <p class="hint">✦ 공을 클릭하세요 ✦</p>
+  </div>
+
+  <script>
+    const answers = [
+      '제가 보기엔 그럴 것 같아요 😊',
+      '나중에 다시 물어보셔도 좋을 것 같아요',
+      '지금은 말씀드리기 어려울 것 같아요',
+      '아직은 예측하기가 어렵네요',
+      '조금만 더 집중해서 다시 물어봐 주세요',
+      '너무 기대하지는 않는 게 좋을 것 같아요',
+      '확실해 보여요',
+      '분명 그런 것 같아요',
+      '아마 그럴 가능성이 높아요',
+      '제 답변은 \'아니요\'예요',
+      '제가 아는 바로는 아닌 것 같아요',
+      '전망이 좋아 보여요',
+      '전망이 조금 아쉬운 편이에요',
+      '답변이 조금 애매하네요… 다시 한번 물어봐 주세요',
+      '느낌상 맞는 것 같아요',
+      '아직은 많이 불확실해요',
+      '의심의 여지가 없어 보여요',
+      '답은 \'예\'인 것 같아요',
+      '거의 확실하게 \'예\'예요',
+      '믿으셔도 좋을 것 같아요',
+    ];
+
+    // Generate star field
+    (function() {
+      const container = document.getElementById('bgStars');
+      const W = window.innerWidth, H = window.innerHeight;
+      for (let i = 0; i < 90; i++) {
+        const s = document.createElement('div');
+        s.className = 'star';
+        const size = Math.random() < 0.7 ? 1 : (Math.random() < 0.6 ? 1.5 : 2);
+        const minOp = (0.1 + Math.random() * 0.2).toFixed(2);
+        const maxOp = (0.5 + Math.random() * 0.5).toFixed(2);
+        s.style.cssText = `
+          width:${size}px; height:${size}px;
+          left:${Math.random()*100}vw; top:${Math.random()*100}vh;
+          --dur:${2 + Math.random()*4}s;
+          --delay:-${Math.random()*4}s;
+          --min-op:${minOp}; --max-op:${maxOp};
+        `;
+        container.appendChild(s);
+      }
+    })();
+
+    const ballContainer = document.getElementById('ballContainer');
+    const innerCircle   = document.getElementById('innerCircle');
+    const eight         = document.getElementById('eight');
+    const answerText    = document.getElementById('answerText');
+    const themeToggle   = document.getElementById('themeToggle');
+
+    let isShaking = false;
+
+    function shake() {
+      if (isShaking) return;
+      isShaking = true;
+
+      answerText.classList.remove('visible');
+      eight.style.display = 'block';
+
+      ballContainer.classList.add('shaking');
+
+      ballContainer.addEventListener('animationend', function handler() {
+        ballContainer.classList.remove('shaking');
+        ballContainer.removeEventListener('animationend', handler);
+
+        const pick = answers[Math.floor(Math.random() * answers.length)];
+        answerText.textContent = pick;
+
+        eight.style.display = 'none';
+        answerText.classList.add('visible');
+
+        // Glow pulse on inner circle
+        innerCircle.classList.remove('pulse');
+        void innerCircle.offsetWidth; // reflow
+        innerCircle.classList.add('pulse');
+
+        isShaking = false;
+      });
+    }
+
+    ballContainer.addEventListener('click', shake);
+
+    themeToggle.addEventListener('change', function() {
+      document.body.classList.toggle('modern', this.checked);
+    });
+  </script>
+</body>
+</html>
